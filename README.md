@@ -1,7 +1,7 @@
 # evloop
 a eventloop for golang. We can write schedule use evloop. or as async eventloop thread during developing.
 
-sample code.
+# sample code.
 
 ```
 package main
@@ -9,7 +9,7 @@ package main
 import (
 	"fmt"
 	"time"
-	
+
 	"github.com/sj20082663/evloop"
 )
 
@@ -39,3 +39,11 @@ func thread() {
 	}, time.Second)
 }
 ```
+
+# Copyright
+Copyright 2015 By Jash. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+
+# Contact
+mail: shijian0912@163.com

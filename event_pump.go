@@ -1,3 +1,8 @@
+// Copyright 2015 By Jash. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+// mail: shijian0912@163.com
+
 package evloop
 
 import (
@@ -59,6 +64,7 @@ func (pump *tEventPump) run() {
 		if moreWorkIsPlausible {
 			continueCount++
 			if continueCount >= 1000 {
+				continueCount = 0
 				log.Printf("to much pending events.")
 				time.Sleep(time.Second)
 			}
