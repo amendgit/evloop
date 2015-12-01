@@ -44,27 +44,25 @@ func (pump *tEventPump) run() {
 	var continueCount = 0
 
 	for {
-		var moreWorkIsPlausible, more = false, false
+		var shouldContinue, more = false, false
 		pump.hasPendingEvent = false
 
 		more = pump.evloop.processEvent()
-		moreWorkIsPlausible = moreWorkIsPlausible || more
+		shouldContinue = shouldContinue || more
 		if pump.evloop.shouldQuit {
 			break
 		}
 
 		more, nextDelayedRunTime := pump.evloop.processDelayedEvent()
-		moreWorkIsPlausible = moreWorkIsPlausible || more
+		shouldContinue = shouldContinue || more
 		if pump.evloop.shouldQuit {
 			break
 		}
 
-		pump.scheduleDelayedEvent(nextDelayedRunTime)
-		moreWorkIsPlausible = moreWorkIsPlausible || pump.hasPendingEvent
-		if moreWorkIsPlausible {
+		shouldContinue = shouldContinue || pump.hasPendingEvent
+		if shouldContinue {
 			continueCount++
 			if continueCount >= 1000 {
-				continueCount = 0
 				log.Printf("to much pending events.")
 				time.Sleep(time.Second)
 			}
@@ -72,6 +70,7 @@ func (pump *tEventPump) run() {
 		}
 		continueCount = 0
 
+		pump.scheduleDelayedEvent(nextDelayedRunTime)
 		var wait = pump.nextDelayedRunTime.Sub(time.Now())
 		if wait > 0 {
 			time.Sleep(wait)
