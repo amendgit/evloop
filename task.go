@@ -7,19 +7,19 @@ package evloop
 
 import "time"
 
-type Event struct {
+type Task struct {
 	Function       func()
 	DelayedRunTime time.Time
 }
 
-func NewEvent(function func(), delayed time.Duration) *Event {
-	var event = new(Event)
-	event.Function = function
-	event.DelayedRunTime = time.Now().Add(delayed)
-	return event
+func NewTask(function func(), delayed time.Duration) *Task {
+	var task = new(Task)
+	task.Function = function
+	task.DelayedRunTime = time.Now().Add(delayed)
+	return task
 }
 
-func (e *Event) Prior(a Interface) bool {
-	var ea = a.(*Event)
+func (e *Task) Precede(a Interface) bool {
+	var ea = a.(*Task)
 	return e.DelayedRunTime.Before(ea.DelayedRunTime)
 }

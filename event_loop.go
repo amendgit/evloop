@@ -12,68 +12,68 @@ import (
 )
 
 type EventLoop struct {
-	shouldQuit             bool
-	pendingEventQueue      *list.List
-	pendingEventQueueMutex sync.Mutex
-	delayedEventQueue      *Pqueue
-	pump                   *tEventPump
-	recentTime             time.Time
+	shouldQuit            bool
+	pendingTaskQueue      *list.List
+	pendingTaskQueueMutex sync.Mutex
+	delayedTaskQueue      *Pqueue
+	pump                  *tEventPump
+	recentTime            time.Time
 }
 
 func NewEventLoop() *EventLoop {
 	var el = new(EventLoop)
-	el.pendingEventQueue = list.New()
-	el.delayedEventQueue = NewPqueue()
+	el.pendingTaskQueue = list.New()
+	el.delayedTaskQueue = NewPqueue()
 	el.pump = newEventPump(el)
 	return el
 }
 
-func (el *EventLoop) PostEvent(event *Event) {
-	if event.DelayedRunTime.After(time.Now()) {
-		el.addToDelayedEventQueue(event)
+func (el *EventLoop) PostTask(task *Task) {
+	if task.DelayedRunTime.After(time.Now()) {
+		el.addToDelayedEventQueue(task)
 	} else {
-		el.addToPendingEventQueue(event)
+		el.addToPendingEventQueue(task)
 	}
 }
 
 func (el *EventLoop) PostFunc(function func()) {
-	var event = NewEvent(function, 0)
-	el.PostEvent(event)
+	var task = NewTask(function, 0)
+	el.PostTask(task)
 }
 
 func (el *EventLoop) PostDelayedFunc(function func(), delayed time.Duration) {
-	var event = NewEvent(function, delayed)
-	el.PostEvent(event)
+	var task = NewTask(function, delayed)
+	el.PostTask(task)
 }
 
 func (el *EventLoop) RepeatFunc(function func(stop *bool), delayed time.Duration) {
-	var repeat *Event
-	repeat = NewEvent(func() {
+	var repeat *Task
+	repeat = NewTask(func() {
 		repeat.DelayedRunTime = time.Now().Add(delayed)
 		var stop bool
 		function(&stop)
 		if stop {
 			return
 		}
-		el.PostEvent(repeat)
+		el.PostTask(repeat)
 	}, 0)
 
-	el.PostEvent(repeat)
+	el.PostTask(repeat)
 }
 
 func (el *EventLoop) ShouldQuit() {
 	el.shouldQuit = true
 }
 
-func (el *EventLoop) addToPendingEventQueue(event *Event) {
-	var wasEmpty = (el.pendingEventQueue.Len() == 0)
-	el.pendingEventQueue.PushBack(event)
+func (el *EventLoop) addToPendingEventQueue(task *Task) {
+	var wasEmpty = (el.pendingTaskQueue.Len() == 0)
+	el.pendingTaskQueue.PushBack(task)
 	el.scheduleEvent(wasEmpty)
 }
 
-func (el *EventLoop) addToDelayedEventQueue(event *Event) {
-	el.delayedEventQueue.Push(event)
-	var nextDelayedRunTime = el.delayedEventQueue.Top().(*Event).DelayedRunTime
+func (el *EventLoop) addToDelayedEventQueue(task *Task) {
+	el.delayedTaskQueue.Push(task)
+	var nextDelayedRunTime = el.delayedTaskQueue.Top().(*Task).DelayedRunTime
 	el.scheduleDelayedEvent(nextDelayedRunTime)
 }
 
@@ -87,23 +87,23 @@ func (el *EventLoop) scheduleDelayedEvent(dealyedRunTime time.Time) {
 	el.pump.scheduleDelayedEvent(dealyedRunTime)
 }
 
-func (el *EventLoop) processEvent() (handled bool) {
+func (el *EventLoop) processTask() (handled bool) {
 	var now = time.Now()
 
-	for el.pendingEventQueue.Len() != 0 {
-		el.pendingEventQueueMutex.Lock()
-		var elem = el.pendingEventQueue.Front()
-		var event = elem.Value.(*Event)
-		el.pendingEventQueue.Remove(elem)
-		el.pendingEventQueueMutex.Unlock()
+	for el.pendingTaskQueue.Len() != 0 {
+		el.pendingTaskQueueMutex.Lock()
+		var elem = el.pendingTaskQueue.Front()
+		var task = elem.Value.(*Task)
+		el.pendingTaskQueue.Remove(elem)
+		el.pendingTaskQueueMutex.Unlock()
 
-		if !event.DelayedRunTime.After(now) {
-			event.Function()
-			return el.pendingEventQueue.Len() != 0
+		if !task.DelayedRunTime.After(now) {
+			task.Function()
+			return el.pendingTaskQueue.Len() != 0
 		} else {
-			el.delayedEventQueue.Push(event)
-			if el.delayedEventQueue.Top() == Interface(event) {
-				el.pump.scheduleDelayedEvent(el.delayedEventQueue.Top().(*Event).DelayedRunTime)
+			el.delayedTaskQueue.Push(task)
+			if el.delayedTaskQueue.Top() == Interface(task) {
+				el.pump.scheduleDelayedEvent(el.delayedTaskQueue.Top().(*Task).DelayedRunTime)
 			}
 		}
 	}
@@ -111,8 +111,8 @@ func (el *EventLoop) processEvent() (handled bool) {
 	return false
 }
 
-func (el *EventLoop) processDelayedEvent() (handled bool, nextDelayedEventTime time.Time) {
-	if el.delayedEventQueue.Empty() {
+func (el *EventLoop) processDelayedTask() (handled bool, nextDelayedEventTime time.Time) {
+	if el.delayedTaskQueue.Empty() {
 		el.recentTime = time.Now()
 		return false, el.recentTime
 	}
@@ -123,7 +123,7 @@ func (el *EventLoop) processDelayedEvent() (handled bool, nextDelayedEventTime t
 	// that are ready to run before calling it again. As a result, the more we
 	// fall behind (and have a lot of ready-to-run delayed events), the more
 	// efficiency we'll be at handling the events.
-	var nextRunTime = el.delayedEventQueue.Top().(*Event).DelayedRunTime
+	var nextRunTime = el.delayedTaskQueue.Top().(*Task).DelayedRunTime
 	if nextRunTime.After(el.recentTime) {
 		el.recentTime = time.Now()
 		if nextRunTime.After(el.recentTime) {
@@ -131,13 +131,13 @@ func (el *EventLoop) processDelayedEvent() (handled bool, nextDelayedEventTime t
 		}
 	}
 
-	var event = el.delayedEventQueue.Top().(*Event)
-	el.delayedEventQueue.Pop()
+	var event = el.delayedTaskQueue.Top().(*Task)
+	el.delayedTaskQueue.Pop()
 
 	event.Function()
 
-	if !el.delayedEventQueue.Empty() {
-		nextDelayedEventTime = el.delayedEventQueue.Top().(*Event).DelayedRunTime
+	if !el.delayedTaskQueue.Empty() {
+		nextDelayedEventTime = el.delayedTaskQueue.Top().(*Task).DelayedRunTime
 	}
 
 	return true, nextDelayedEventTime

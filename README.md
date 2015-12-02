@@ -17,7 +17,7 @@ var loop *evloop.EventLoop
 
 func main() {
 	loop = evloop.NewEventLoop()
-	thread()
+	go thread()
 	loop.Run()
 }
 

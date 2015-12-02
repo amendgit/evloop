@@ -6,7 +6,7 @@
 package evloop
 
 type Interface interface {
-	Prior(Interface) bool
+	Precede(Interface) bool
 }
 
 type Pqueue struct {
@@ -38,7 +38,7 @@ func (pq *Pqueue) Push(elem Interface) {
 	var ib = int(ia / 2)
 
 	// root node is at index 1.
-	for ia != 1 && pq.data[ia].Prior(pq.data[ib]) {
+	for ia != 1 && pq.data[ia].Precede(pq.data[ib]) {
 		pq.data[ia], pq.data[ib] = pq.data[ib], pq.data[ia]
 		ia, ib = ib, ib/2
 	}
@@ -62,11 +62,11 @@ func (pq *Pqueue) Pop() {
 		}
 
 		var i, r = l, l + 1
-		if r < n && pq.data[r].Prior(pq.data[l]) {
+		if r < n && pq.data[r].Precede(pq.data[l]) {
 			i = r
 		}
 
-		if pq.data[i].Prior(pq.data[p]) {
+		if pq.data[i].Precede(pq.data[p]) {
 			pq.data[p], pq.data[l] = pq.data[l], pq.data[p]
 			p = i
 		} else {

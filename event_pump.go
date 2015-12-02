@@ -47,13 +47,13 @@ func (pump *tEventPump) run() {
 		var shouldContinue, more = false, false
 		pump.hasPendingEvent = false
 
-		more = pump.evloop.processEvent()
+		more = pump.evloop.processTask()
 		shouldContinue = shouldContinue || more
 		if pump.evloop.shouldQuit {
 			break
 		}
 
-		more, nextDelayedRunTime := pump.evloop.processDelayedEvent()
+		more, nextDelayedRunTime := pump.evloop.processDelayedTask()
 		shouldContinue = shouldContinue || more
 		if pump.evloop.shouldQuit {
 			break
